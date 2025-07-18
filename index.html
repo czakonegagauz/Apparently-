@@ -3,63 +3,98 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Курс USDT</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Курс и динамика криптовалют</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <style>
     body {
-      font-family: system-ui, sans-serif;
-      background-color: #f8f9fa;
-      color: #212529;
       margin: 0;
-      padding: 2em;
-      text-align: center;
+      padding: 1em;
+      font-family: system-ui, sans-serif;
+      background: #f8f9fa;
+      color: #212529;
     }
-    .card {
-      background: white;
-      border-radius: 12px;
-      padding: 20px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      max-width: 400px;
+    .coin-list {
+      max-width: 600px;
       margin: 0 auto;
+      border-radius: 8px;
+      background: #fff;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
-    h1 {
-      font-size: 24px;
-      margin-bottom: 0.5em;
+    .coin {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid #e9ecef;
     }
-    #price {
-      font-size: 36px;
-      color: #28a745;
-      margin: 0.5em 0;
+    .coin:last-child { border-bottom: none; }
+    .coin-name { font-weight: 600; }
+    .price { font-size: 1.2em; }
+    .change {
+      font-size: .9em;
+      padding: 2px 6px;
+      border-radius: 4px;
     }
-    .time {
-      font-size: 14px;
+    .up { color: #155724; background: #d4edda; }
+    .down { color: #721c24; background: #f8d7da; }
+    #last-update {
+      text-align: center;
+      margin: .5em 0;
+      font-size: .8em;
       color: #6c757d;
     }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>💱 Курс USDT → RUB</h1>
-    <div id="price">Загрузка...</div>
-    <div class="time" id="time">—</div>
+  <h1 style="text-align:center">Курс и изменение за 24 ч (RUB)</h1>
+  <div class="coin-list">
+    <!-- Заполняется JS -->
   </div>
+  <div id="last-update">Загрузка...</div>
 
   <script>
-    async function fetchRate() {
+    const coinIds = ["bitcoin","ethereum","ripple","tether"];
+    const displayNames = { bitcoin: "BTC", ethereum: "ETH", ripple: "XRP", tether: "USDT" };
+    const coinList = document.querySelector(".coin-list");
+    const updateTimeEl = document.getElementById("last-update");
+
+    async function updateCoins() {
       try {
-        const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=rub");
+        const res = await fetch(
+          "https://api.coingecko.com/api/v3/simple/price"
+           + "?ids=" + coinIds.join(",")
+           + "&vs_currencies=rub"
+           + "&include_24hr_change=true"
+        );
         const data = await res.json();
-        const price = data.tether.rub;
-        document.getElementById("price").textContent = price.toFixed(2) + " ₽";
-        document.getElementById("time").textContent = "Обновлено: " + new Date().toLocaleTimeString();
+
+        coinList.innerHTML = "";
+        coinIds.forEach(id => {
+          const info = data[id];
+          const price = info.rub;
+          const change = info.rub_24h_change;
+          const changeFixed = change ? change.toFixed(2) : "0.00";
+          const cls = change >= 0 ? "change up" : "change down";
+          const sign = change >= 0 ? "+" : "";
+          const coinEl = document.createElement("div");
+          coinEl.className = "coin";
+          coinEl.innerHTML = `
+            <div class="coin-name">${displayNames[id]}</div>
+            <div class="price">${price.toLocaleString("ru-RU", { style:"currency", currency:"RUB" })}</div>
+            <div class="${cls}">${sign}${changeFixed}%</div>
+          `;
+          coinList.appendChild(coinEl);
+        });
+
+        updateTimeEl.textContent = "Обновлено: " + new Date().toLocaleTimeString("ru-RU");
       } catch (e) {
-        document.getElementById("price").textContent = "Ошибка загрузки";
-        document.getElementById("time").textContent = "";
+        updateTimeEl.textContent = "Ошибка при загрузке данных.";
       }
     }
 
-    fetchRate();
-    setInterval(fetchRate, 10000); // обновление каждые 10 сек
+    updateCoins();
+    setInterval(updateCoins, 10000);
   </script>
 </body>
 </html>
